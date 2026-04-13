@@ -11,6 +11,7 @@
 //   4. La mise en forme de la réponse est déléguée à toOpenWeatherLikeShape()
 
 import { toOpenWeatherLikeShape } from "../../services/openmeteo";
+import locationConfig from "../../config/location.json";
 
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -93,7 +94,7 @@ export default async function handler(req, res) {
   * attendu par les composants React (MainCard, MetricsBox, DateAndTime…)
   * sans qu'aucun de ces composants n'ait besoin d'être modifié.
   */ 
-  const payload = toOpenWeatherLikeShape(place, weatherJson);
+  const payload = toOpenWeatherLikeShape(place, forecastData);
   return res.status(200).json(payload);
   } catch (error) {
     return res.status(200).json({ message: "Weather data unavailable" });

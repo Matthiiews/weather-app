@@ -90,7 +90,7 @@ export function wmoToIconName(code, isDay) {
   if (code >= 51 && code <= 67) return `10${d}`;
   if (code >= 71 && code <= 77) return `13${d}`; 
   if (code >= 80 && code <= 82) return `09${d}`;
-  if (code >= 85 || code === 86) return `13${d}`;
+  if (code === 85 || code === 86) return `13${d}`;
   if (code >= 95 && code <= 99) return `11${d}`;
   return `02${d}`;
 }
