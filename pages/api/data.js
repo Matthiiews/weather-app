@@ -13,7 +13,7 @@
 import { toOpenWeatherLikeShape } from "../../services/openmeteo";
 
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
-const FORESCAST_URL = "https://api.open-meteo.com/v1/forecast";
+const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
 // Variables "current" demandées à Open-Meteo.
 // Correspondent exactement aux champs aux utilisés dans toOpenWeatherLikeShape().
@@ -34,26 +34,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { cityInput } = req.body;
-  const query = typeof cityInput === "string" ? cityInput.trim() : "";
+  try {
+    const { cityInput } = req.body || {};
+    const cityName = typeof cityInput === "string" ? cityInput.trim() : "";
 
-  if (!query) {
+  if (!cityName) {
     return res.status(200).json({ message: "City not found, try again !" });
   }
 
-  try {
-    // ------------------------------------------------------------------
-    // ÉTAPE 1 : Géocodage — résolution nom de ville → coordonnées GPS
-    //
-    // Open-Meteo expose sa propre API de géocodage, gratuite et sans clé.
-    // Paramètres :
-    //   name     = saisie utilisateur
-    //   count=1  = on ne garde que le premier résultat
-    //   language = langue des descriptions retournées
-    //   format   = toujours json
-    // ------------------------------------------------------------------
-    const geoRes = await fetch(
-      `${GEOCODING_URL}?name=${encodeURIComponent(query)}&count=1&language=fr&format=json`,
+  const geoRes = await fetch(
+      `${GEOCODING_URL}?name=${encodeURIComponent(cityName)}&count=1&language=fr&format=json`,
     );
     const geoJson = await geoRes.json();
 
@@ -80,7 +70,7 @@ export default async function handler(req, res) {
     //   forecast_days=1      → on ne demande qu'une seule journée
     // ------------------------------------------------------------------
     const forecastUrl =
-      `${FORESCAST_URL}` +
+      `${FORECAST_URL}` +
       `?latitude=${place.latitude}` +
       `&longitude=${place.longitude}` +
       `&timezone=${tz}` +
@@ -109,8 +99,7 @@ export default async function handler(req, res) {
     // ------------------------------------------------------------------
     const payload = toOpenWeatherLikeShape(place, weatherJson);
     return res.status(200).json(payload);
-  } catch (e) {
-    console.error("[api/data] Erreur inattendue :", e);
-    return res.status(200).json({ message: "City not found, tryh again," });
+  } catch (error) {
+    return res.status(200).json({ message: "Weather data unavailable" });
   }
 }
