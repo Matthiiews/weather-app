@@ -1,46 +1,54 @@
-# Weather App
+# Weather App (Open-Meteo)
 
-Check the current weather on any city on the planet. Switch between metric and imperial units.
+Application météo Next.js conçue pour afficher la météo d'une ville pré-configurée, sans champ de recherche.
 
-![Alt img](https://images.ctfassets.net/zlsyc9paq6sa/3uBrJ07WSM40FpolgjInHY/7d886cb4187b52194bf9b63c183a1d3a/1627637330_x.gif)
+## Fonctionnalités
 
-## Features
+1. Données météo récupérées via l'API [Open-Meteo](https://open-meteo.com/), sans clé API.
+2. Ville configurable via `config/location.json`.
+3. Affichage de la date/heure locale, température, ressenti, humidité, vent, visibilité, lever/coucher du soleil.
+4. Bascule d'unités métrique/impériale côté interface.
+5. Rafraîchissement automatique des données toutes les heures.
+6. Gestion des états de chargement et d'erreur.
 
-1. User's ability to search cities
+## Configuration de la ville
 
-2. Current local time and date
+Le fichier `config/location.json` contient la localisation affichée :
 
-3. Temperatures and humidity
+```json
+{
+  "city": "Riga",
+  "language": "fr",
+  "fallbackTimezone": "Europe/Paris"
+}
+```
 
-4. Wind speed and direction
-
-5. Sunrise and sunset times
-
-6. Metric vs Imperial system
-
-7. Error handling and loading info
+- `city` : ville à afficher.
+- `language` : langue utilisée par l'API de géocodage.
+- `fallbackTimezone` : fuseau de secours si la timezone de la ville n'est pas disponible.
 
 ## Installation
 
-1. `git clone https://github.com/madzadev/weather-app.git`
+1. Installer les dépendances :
+   - `npm install`
+2. Lancer l'application :
+   - `npm run dev`
+3. Ouvrir [http://localhost:3000](http://localhost:3000)
 
-2. `cd weather-app`
+## Compatibilité Node.js
 
-3. `npm install`
+Ce projet utilise `Next.js 11`. Avec des versions récentes de Node.js (OpenSSL 3), les scripts incluent déjà :
 
-4. Log-in to [Openweathermap.com](https://openweathermap.org/)
+- `NODE_OPTIONS=--openssl-legacy-provider`
 
-5. Create an API key
+Cela évite l'erreur `ERR_OSSL_EVP_UNSUPPORTED` au démarrage.
 
-6. `cp .env.example .env.local`
+## Structure utile
 
-7. Paste API key for `OPENWEATHER_API_KEY`
-
-8. `npm run dev`
-
-## Contributions
-
-Any feature requests and pull requests are welcome!
+- `pages/index.js` : page principale et rafraîchissement horaire.
+- `pages/api/data.js` : route API (géocodage + forecast Open-Meteo).
+- `services/openmeteo.js` : adaptation du format Open-Meteo vers le format attendu par les composants.
+- `config/location.json` : configuration de la ville.
 
 ## License
 
