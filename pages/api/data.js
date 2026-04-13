@@ -29,76 +29,72 @@ const CURRENT_VARS = [
 ].join(",");
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET");
     return res.status(405).json({ message: "Method not allowed" });
   }
 
   try {
-    const { cityInput } = req.body || {};
-    const cityName = typeof cityInput === "string" ? cityInput.trim() : "";
-
+    const cityName = (locationConfig?.city || "").trim();
+    
   if (!cityName) {
     return res.status(200).json({ message: "City not found, try again !" });
   }
 
-  const geoRes = await fetch(
-      `${GEOCODING_URL}?name=${encodeURIComponent(cityName)}&count=1&language=fr&format=json`,
-    );
-    const geoJson = await geoRes.json();
+  const geocodeUrl =
+    `${GEOCODING_URL}?name=${encodeURIComponent(cityName)}` +
+    `&count=1&language=${locationConfig?.language || "fr"}&format=json`;
+  const geocodeResponse = await fetch(geocodeUrl);
+  const geocodeData = await geocodeResponse.json();
+  const place = geocodeData?.results?.[0];
 
-    if (!geoJson.results?.length) {
-      return res.status(200).json({ message: "City not found, try again" });
-    }
+  if (!place) {
+    return res.status(200).json({ message: "City not found, try again" });
+  }
 
-    const place = geoJson.results[0];
-    // place = { name, country_code, latitude, longitude, timezone, … }
+  const timezone = encodeURIComponent(
+    place.timezone || locationConfig?.fallbackTimezone || "Europe/Paris"
+  );
+  
+  /**  ÉTAPE 2 : Requête météo vers l'API Forecast Open-Meteo
+  * Paramètres clés :
+  * latitude / longitude → coordonnées issues du géocodage
+  * timezone             → fuseau local (pour sunrise/sunset corrects)
+  * wind_speed_unit=ms   → m/s, cohérent avec l'unité OWM d'origine
+  * timeformat=unixtime  → current.time sera un entier Unix (secondes)
+  *                           → utilisé dans toOpenWeatherLikeShape pour "dt"
+  *      current=…            → variables météo instantanées (voir CURRENT_VARS)
+  *      daily=sunrise,sunset → lever/coucher du soleil du jour (indice [0])
+  *      forecast_days=1      → on ne demande qu'une seule journée
+  */
+  const forecastUrl =
+    `${FORECAST_URL}?latitude=${place.latitude}` +
+    `&longitude=${place.longitude}` +
+    `&timezone=${timezone}` +
+    `&wind_speed_unit=ms` +
+    `&timeformat=unixtime` +
+    `&current=${CURRENT_VARS}` +
+    `&hourly=visibility` +
+    `&daily=sunrise,sunset` +
+    `&forecast_days=1`;
 
-    const tz = encodeURIComponent(place.timezone || "Europe/Paris");
-
-    // ------------------------------------------------------------------
-    // ÉTAPE 2 : Requête météo vers l'API Forecast Open-Meteo
-    //
-    // Paramètres clés :
-    //   latitude / longitude → coordonnées issues du géocodage
-    //   timezone             → fuseau local (pour sunrise/sunset corrects)
-    //   wind_speed_unit=ms   → m/s, cohérent avec l'unité OWM d'origine
-    //   timeformat=unixtime  → current.time sera un entier Unix (secondes)
-    //                          → utilisé dans toOpenWeatherLikeShape pour "dt"
-    //   current=…            → variables météo instantanées (voir CURRENT_VARS)
-    //   daily=sunrise,sunset → lever/coucher du soleil du jour (indice [0])
-    //   forecast_days=1      → on ne demande qu'une seule journée
-    // ------------------------------------------------------------------
-    const forecastUrl =
-      `${FORECAST_URL}` +
-      `?latitude=${place.latitude}` +
-      `&longitude=${place.longitude}` +
-      `&timezone=${tz}` +
-      `&wind_speed_unit=ms` +
-      `&timeformat=unixtime` +
-      `&current=${CURRENT_VARS}` +
-      `&daily=sunrise,sunset` +
-      `&forecast_days=1`;
-
-    const weatherRes = await fetch(forecastUrl);
-    const weatherJson = await weatherRes.json();
-
-    // Open-Meteo retourne { error: true, reason: "..." } sur erreur HTTP 400
-    if (weatherJson.error) {
+  const forecastResponse = await fetch(forecastUrl);
+  const forecastData = await forecastResponse.json();
+  
+  /** Open-Meteo retourne { error: true, reason: "..." } sur erreur HTTP 400 */
+  if (forecastData?.error) {
       return res.status(200).json({
-        message: weatherJson.reason || "weather data unavaillable",
-      });
-    }
-
-    // ------------------------------------------------------------------
-    // ÉTAPE 3 : Transformation de la réponse
-    //
-    // toOpenWeatherLikeShape() adapte la structure Open-Meteo au format
-    // attendu par les composants React (MainCard, MetricsBox, DateAndTime…)
-    // sans qu'aucun de ces composants n'ait besoin d'être modifié.
-    // ------------------------------------------------------------------
-    const payload = toOpenWeatherLikeShape(place, weatherJson);
-    return res.status(200).json(payload);
+        message: forecastData.reason || "Weather data unavailable",
+    });
+  }
+  
+  /** ÉTAPE 3 : Transformation de la réponse
+  * toOpenWeatherLikeShape() adapte la structure Open-Meteo au format
+  * attendu par les composants React (MainCard, MetricsBox, DateAndTime…)
+  * sans qu'aucun de ces composants n'ait besoin d'être modifié.
+  */ 
+  const payload = toOpenWeatherLikeShape(place, weatherJson);
+  return res.status(200).json(payload);
   } catch (error) {
     return res.status(200).json({ message: "Weather data unavailable" });
   }
