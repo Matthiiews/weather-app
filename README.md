@@ -17,7 +17,7 @@ Le fichier `config/location.json` contient la localisation affichée :
 
 ```json
 {
-  "city": "Riga",
+  "city": "Paris",
   "language": "fr",
   "fallbackTimezone": "Europe/Paris"
 }
